@@ -11,13 +11,17 @@ from telegram.ext import (
     ApplicationBuilder, CommandHandler, MessageHandler,
     filters, ContextTypes, ConversationHandler
 )
-import anthropic
+from openai import OpenAI
 import json
 import os
 
 # ─── CONFIG ───────────────────────────────────────────────────────────────────
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "YOUR_TELEGRAM_BOT_TOKEN")
-ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "YOUR_ANTHROPIC_KEY")
+QWEN_API_KEY = os.environ.get("QWEN_API_KEY", "YOUR_QWEN_API_KEY")
+
+# Qwen API endpoint (Singapore region - quốc tế)
+QWEN_BASE_URL = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
+QWEN_MODEL = "qwen-plus"  # hoặc "qwen-max", "qwen-turbo"
 
 # File lưu profile user (1 người dùng)
 PROFILE_FILE = "user_profile.json"
@@ -525,14 +529,14 @@ async def handle_tracuu(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     history.append({"role": "user", "content": user_msg})
 
     try:
-        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-        response = client.messages.create(
-            model="claude-sonnet-4-20250514",
+        client = OpenAI(api_key=QWEN_API_KEY, base_url=QWEN_BASE_URL)
+        messages_with_system = [{"role": "system", "content": system_prompt}] + history
+        response = client.chat.completions.create(
+            model=QWEN_MODEL,
             max_tokens=1000,
-            system=system_prompt,
-            messages=history
+            messages=messages_with_system
         )
-        reply = response.content[0].text
+        reply = response.choices[0].message.content
         history.append({"role": "assistant", "content": reply})
         ctx.user_data["tracuu_history"] = history[-10:]  # giữ 10 turn gần nhất
 
